@@ -4,9 +4,8 @@ languages:
 - java
 products:
 - azure
-extensions:
-- services: Servicebus
-- platforms: java
+description: "Getting Started with Servicebus - Service Bus Publish Subscribe Basic - in Java"
+urlFragment: service-bus-java-manage-publish-subscribe-with-basic-features
 ---
 
 # Getting Started with Servicebus - Service Bus Publish Subscribe Basic - in Java #
