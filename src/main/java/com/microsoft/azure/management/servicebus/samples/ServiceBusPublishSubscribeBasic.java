@@ -158,7 +158,7 @@ public final class ServiceBusPublishSubscribeBasic {
                 .sender()
                 .topicName(topicName)
                 .buildClient();;
-                serviceBusSenderClient.send(message);
+                serviceBusSenderClient.sendMessage(message);
             }
             catch (Exception ex) {
             }
