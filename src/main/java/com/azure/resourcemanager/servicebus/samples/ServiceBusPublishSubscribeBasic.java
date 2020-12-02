@@ -1,31 +1,27 @@
-/**
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for
- * license information.
- */
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
-package com.microsoft.azure.management.servicebus.samples;
+package com.azure.resourcemanager.servicebus.samples;
 
-import com.microsoft.azure.PagedList;
-import com.microsoft.azure.management.Azure;
-import com.microsoft.azure.management.resources.fluentcore.arm.Region;
-import com.microsoft.azure.management.resources.fluentcore.utils.SdkContext;
-import com.microsoft.azure.management.samples.Utils;
-import com.microsoft.azure.management.servicebus.AuthorizationKeys;
-import com.microsoft.azure.management.servicebus.NamespaceAuthorizationRule;
-import com.microsoft.azure.management.servicebus.NamespaceSku;
-import com.microsoft.azure.management.servicebus.Policykey;
-import com.microsoft.azure.management.servicebus.ServiceBusNamespace;
-import com.microsoft.azure.management.servicebus.ServiceBusSubscription;
-import com.microsoft.azure.management.servicebus.Topic;
-import com.microsoft.rest.LogLevel;
-import com.microsoft.windowsazure.Configuration;
-import com.microsoft.windowsazure.services.servicebus.ServiceBusConfiguration;
-import com.microsoft.windowsazure.services.servicebus.ServiceBusContract;
-import com.microsoft.windowsazure.services.servicebus.ServiceBusService;
-import com.microsoft.windowsazure.services.servicebus.models.BrokeredMessage;
-
-import java.io.File;
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.rest.PagedIterable;
+import com.azure.core.management.AzureEnvironment;
+import com.azure.core.management.profile.AzureProfile;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.messaging.servicebus.ServiceBusClientBuilder;
+import com.azure.messaging.servicebus.ServiceBusMessage;
+import com.azure.messaging.servicebus.ServiceBusSenderClient;
+import com.azure.resourcemanager.AzureResourceManager;
+import com.azure.core.management.Region;
+import com.azure.resourcemanager.samples.Utils;
+import com.azure.resourcemanager.servicebus.models.AuthorizationKeys;
+import com.azure.resourcemanager.servicebus.models.NamespaceAuthorizationRule;
+import com.azure.resourcemanager.servicebus.models.NamespaceSku;
+import com.azure.resourcemanager.servicebus.models.Policykey;
+import com.azure.resourcemanager.servicebus.models.ServiceBusNamespace;
+import com.azure.resourcemanager.servicebus.models.ServiceBusSubscription;
+import com.azure.resourcemanager.servicebus.models.Topic;
 
 /**
  * Azure Service Bus basic scenario sample.
@@ -47,16 +43,16 @@ public final class ServiceBusPublishSubscribeBasic {
 
     /**
      * Main function which runs the actual sample.
-     * @param azure instance of the azure client
+     * @param azureResourceManager instance of the azure client
      * @return true if sample runs successfully
      */
-    public static boolean runSample(Azure azure) {
+    public static boolean runSample(AzureResourceManager azureResourceManager) {
         // New resources
-        final String rgName = SdkContext.randomResourceName("rgSB02_", 24);
-        final String namespaceName = SdkContext.randomResourceName("namespace", 20);
-        final String topicName = SdkContext.randomResourceName("topic_", 24);
-        final String subscription1Name = SdkContext.randomResourceName("sub1_", 24);
-        final String subscription2Name = SdkContext.randomResourceName("sub2_", 24);
+        final String rgName = Utils.randomResourceName(azureResourceManager, "rgSB02_", 24);
+        final String namespaceName = Utils.randomResourceName(azureResourceManager, "namespace", 20);
+        final String topicName = Utils.randomResourceName(azureResourceManager, "topic_", 24);
+        final String subscription1Name = Utils.randomResourceName(azureResourceManager, "sub1_", 24);
+        final String subscription2Name = Utils.randomResourceName(azureResourceManager, "sub2_", 24);
 
         try {
             //============================================================
@@ -64,12 +60,12 @@ public final class ServiceBusPublishSubscribeBasic {
 
             System.out.println("Creating name space " + namespaceName + " in resource group " + rgName + "...");
 
-            ServiceBusNamespace serviceBusNamespace = azure.serviceBusNamespaces()
-                    .define(namespaceName)
-                    .withRegion(Region.US_WEST)
-                    .withNewResourceGroup(rgName)
-                    .withSku(NamespaceSku.STANDARD)
-                    .create();
+            ServiceBusNamespace serviceBusNamespace = azureResourceManager.serviceBusNamespaces()
+                .define(namespaceName)
+                .withRegion(Region.US_WEST)
+                .withNewResourceGroup(rgName)
+                .withSku(NamespaceSku.STANDARD)
+                .create();
 
             System.out.println("Created service bus " + serviceBusNamespace.name());
             Utils.print(serviceBusNamespace);
@@ -80,8 +76,8 @@ public final class ServiceBusPublishSubscribeBasic {
             System.out.println("Creating topic " + topicName + " in namespace " + namespaceName + "...");
 
             Topic topic = serviceBusNamespace.topics().define(topicName)
-                    .withSizeInMB(2048)
-                    .create();
+                .withSizeInMB(2048)
+                .create();
 
             System.out.println("Created second queue in namespace");
 
@@ -92,9 +88,9 @@ public final class ServiceBusPublishSubscribeBasic {
             System.out.println("Updating topic " + topicName + " with new size and a subscription...");
             topic = serviceBusNamespace.topics().getByName(topicName);
             topic = topic.update()
-                    .withNewSubscription(subscription1Name)
-                    .withSizeInMB(3072)
-                    .apply();
+                .withNewSubscription(subscription1Name)
+                .withSizeInMB(3072)
+                .apply();
 
             System.out.println("Updated topic to change its size in MB along with a subscription");
 
@@ -113,8 +109,8 @@ public final class ServiceBusPublishSubscribeBasic {
             //=============================================================
             // List topics in namespaces
 
-            PagedList<Topic> topics = serviceBusNamespace.topics().list();
-            System.out.println("Number of topics in namespace :" + topics.size());
+            PagedIterable<Topic> topics = serviceBusNamespace.topics().list();
+            System.out.println("Number of topics in namespace :" + Utils.getSize(topics));
 
             for (Topic topicInNamespace : topics) {
                 Utils.print(topicInNamespace);
@@ -123,8 +119,8 @@ public final class ServiceBusPublishSubscribeBasic {
             //=============================================================
             // List all subscriptions for topic in namespaces
 
-            PagedList<ServiceBusSubscription> subscriptions = topic.subscriptions().list();
-            System.out.println("Number of subscriptions to topic: " + subscriptions.size());
+            PagedIterable<ServiceBusSubscription> subscriptions = topic.subscriptions().list();
+            System.out.println("Number of subscriptions to topic: " + Utils.getSize(subscriptions));
 
             for (ServiceBusSubscription subscription : subscriptions) {
                 Utils.print(subscription);
@@ -133,8 +129,8 @@ public final class ServiceBusPublishSubscribeBasic {
             //=============================================================
             // Get connection string for default authorization rule of namespace
 
-            PagedList<NamespaceAuthorizationRule> namespaceAuthorizationRules = serviceBusNamespace.authorizationRules().list();
-            System.out.println("Number of authorization rule for namespace :" + namespaceAuthorizationRules.size());
+            PagedIterable<NamespaceAuthorizationRule> namespaceAuthorizationRules = serviceBusNamespace.authorizationRules().list();
+            System.out.println("Number of authorization rule for namespace :" + Utils.getSize(namespaceAuthorizationRules));
 
 
             for (NamespaceAuthorizationRule namespaceAuthorizationRule: namespaceAuthorizationRules) {
@@ -143,22 +139,22 @@ public final class ServiceBusPublishSubscribeBasic {
 
             System.out.println("Getting keys for authorization rule ...");
 
-            AuthorizationKeys keys = namespaceAuthorizationRules.get(0).getKeys();
+            AuthorizationKeys keys = namespaceAuthorizationRules.iterator().next().getKeys();
             Utils.print(keys);
             System.out.println("Regenerating secondary key for authorization rule ...");
-            keys = namespaceAuthorizationRules.get(0).regenerateKey(Policykey.SECONDARY_KEY);
+            keys = namespaceAuthorizationRules.iterator().next().regenerateKey(Policykey.SECONDARY_KEY);
             Utils.print(keys);
 
             //=============================================================
             // Send a message to topic.
-            try {
-                Configuration config = Configuration.load();
-                config.setProperty(ServiceBusConfiguration.CONNECTION_STRING, keys.primaryConnectionString());
-                ServiceBusContract service = ServiceBusService.create(config);
-                service.sendTopicMessage(topicName, new BrokeredMessage("Hello World"));
-            }
-            catch (Exception ex) {
-            }
+            ServiceBusSenderClient sender = new ServiceBusClientBuilder()
+                .connectionString(keys.primaryConnectionString())
+                .sender()
+                .topicName(topicName)
+                .buildClient();
+            sender.sendMessage(new ServiceBusMessage("Hello World").setMessageId("1"));
+            sender.close();
+
             //=============================================================
             // Delete a queue and namespace
             System.out.println("Deleting subscription " + subscription1Name + " in topic " + topicName + " via update flow...");
@@ -169,21 +165,14 @@ public final class ServiceBusPublishSubscribeBasic {
 
             System.out.println("Deleting namespace " + namespaceName + "...");
             // This will delete the namespace and queue within it.
-            try {
-                azure.serviceBusNamespaces().deleteById(serviceBusNamespace.id());
-            }
-            catch (Exception ex) {
-            }
+            azureResourceManager.serviceBusNamespaces().deleteById(serviceBusNamespace.id());
             System.out.println("Deleted namespace " + namespaceName + "...");
 
             return true;
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-            e.printStackTrace();
         } finally {
             try {
                 System.out.println("Deleting Resource Group: " + rgName);
-                azure.resourceGroups().beginDeleteByName(rgName);
+                azureResourceManager.resourceGroups().beginDeleteByName(rgName);
                 System.out.println("Deleted Resource Group: " + rgName);
             } catch (NullPointerException npe) {
                 System.out.println("Did not create any resources in Azure. No clean up is necessary");
@@ -191,31 +180,30 @@ public final class ServiceBusPublishSubscribeBasic {
                 g.printStackTrace();
             }
         }
-        return false;
     }
 
     /**
      * Main entry point.
+     *
      * @param args the parameters
      */
     public static void main(String[] args) {
         try {
+            final AzureProfile profile = new AzureProfile(AzureEnvironment.AZURE);
+            final TokenCredential credential = new DefaultAzureCredentialBuilder()
+                .authorityHost(profile.getEnvironment().getActiveDirectoryEndpoint())
+                .build();
 
-            //=============================================================
-            // Authenticate
-
-            final File credFile = new File(System.getenv("AZURE_AUTH_LOCATION"));
-
-            Azure azure = Azure
-                    .configure()
-                    .withLogLevel(LogLevel.BODY_AND_HEADERS)
-                    .authenticate(credFile)
-                    .withDefaultSubscription();
+            AzureResourceManager azureResourceManager = AzureResourceManager
+                .configure()
+                .withLogLevel(HttpLogDetailLevel.BASIC)
+                .authenticate(credential, profile)
+                .withDefaultSubscription();
 
             // Print selected subscription
-            System.out.println("Selected subscription: " + azure.subscriptionId());
-            runSample(azure);
+            System.out.println("Selected subscription: " + azureResourceManager.subscriptionId());
 
+            runSample(azureResourceManager);
         } catch (Exception e) {
             System.out.println(e.getMessage());
             e.printStackTrace();
